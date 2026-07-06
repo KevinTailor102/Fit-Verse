@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}FitVerse — AI-Powered Fitness Coach{% endblock %}
+{% block content %}
+<!-- Hero Section -->
+<section class="landing-hero">
+  <div class="container">
+    <div class="row align-items-center min-vh-100 py-5">
+      <div class="col-lg-6">
+        <div class="hero-badge mb-3">
+          <i class="fas fa-robot me-2"></i>Powered by IBM watsonx.ai Granite
+        </div>
+        <h1 class="hero-title">Your Personal<br/><span class="gradient-text">AI Fitness Coach</span></h1>
+        <p class="hero-subtitle">
+          Get personalized workout plans, nutrition advice, and real-time fitness coaching from an AI trained on sports science. Achieve your fitness goals faster with FitVerse.
+        </p>
+        <div class="hero-actions">
+          <a href="{{ url_for('auth.register') }}" class="btn btn-hero-primary">
+            <i class="fas fa-rocket me-2"></i>Start Free Today
+          </a>
+          <a href="{{ url_for('auth.login') }}" class="btn btn-hero-outline ms-3">
+            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+          </a>
+        </div>
+        <div class="hero-stats mt-4">
+          <div class="stat-item"><strong>10+</strong><span>Workout Types</span></div>
+          <div class="stat-item"><strong>AI</strong><span>IBM Granite</span></div>
+          <div class="stat-item"><strong>Free</strong><span>Forever</span></div>
+        </div>
+      </div>
+      <div class="col-lg-6 d-none d-lg-flex justify-content-center">
+        <div class="hero-visual">
+          <div class="hero-card floating">
+            <i class="fas fa-dumbbell fa-4x text-primary mb-3"></i>
+            <h4>Workout Planner</h4>
+            <p class="text-muted mb-0">AI-generated plans for every goal</p>
+          </div>
+          <div class="hero-card-sm floating-delay-1">
+            <i class="fas fa-apple-whole text-success me-2"></i> Meal Plan Ready
+          </div>
+          <div class="hero-card-sm floating-delay-2">
+            <i class="fas fa-fire text-danger me-2"></i> 320 kcal burned today
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features-section py-5 bg-surface">
+  <div class="container">
+    <h2 class="text-center section-title mb-5">Everything You Need to Get Fit</h2>
+    <div class="row g-4">
+      {% set features = [
+        ('fa-robot', 'AI Fitness Coach', 'Chat with IBM Granite AI for personalized workout and nutrition advice anytime.', 'text-primary'),
+        ('fa-dumbbell', 'Workout Planner', 'Generate beginner to advanced plans for weight loss, muscle gain, HIIT, yoga, and more.', 'text-success'),
+        ('fa-apple-whole', 'Nutrition Planner', 'Get personalized Indian & international meal plans with calorie and macro tracking.', 'text-warning'),
+        ('fa-calculator', 'BMI & BMR Calculator', 'Calculate your BMI, BMR, TDEE, and get health insights with ideal weight range.', 'text-info'),
+        ('fa-chart-line', 'Progress Tracker', 'Track habits, water intake, sleep, and workouts with beautiful progress charts.', 'text-danger'),
+        ('fa-moon', 'Dark Mode', 'Easy on the eyes — toggle between light and dark modes for comfortable use anytime.', 'text-secondary'),
+      ] %}
+      {% for icon, title, desc, color in features %}
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card h-100">
+          <div class="feature-icon {{ color }}"><i class="fas {{ icon }}"></i></div>
+          <h5>{{ title }}</h5>
+          <p class="text-muted mb-0">{{ desc }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section py-5 text-center">
+  <div class="container">
+    <h2 class="mb-3">Ready to Transform Your Fitness?</h2>
+    <p class="text-muted mb-4">Join thousands of users achieving their fitness goals with AI-powered coaching.</p>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg px-5">
+      <i class="fas fa-rocket me-2"></i>Get Started Free
+    </a>
+  </div>
+</section>
+{% endblock %}

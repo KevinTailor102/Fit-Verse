@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Profile — FitVerse{% endblock %}
+{% block header_title %}<i class="fas fa-user-circle me-2"></i>My Profile{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 pb-4">
+  <div class="row g-4">
+
+    <!-- Profile Card -->
+    <div class="col-lg-4">
+      <div class="card-panel text-center">
+        <div class="p-4">
+          <div class="profile-avatar mx-auto mb-3" style="background: {{ current_user.avatar_color or '#3b82d4' }}">
+            {{ (current_user.full_name or current_user.username)[0].upper() }}
+          </div>
+          <h4 class="mb-1">{{ current_user.full_name or current_user.username }}</h4>
+          <p class="text-muted mb-3">@{{ current_user.username }}</p>
+          {% if current_user.bmi %}
+          <div class="row g-2 text-center mb-3">
+            <div class="col-4">
+              <div class="profile-mini-stat">
+                <div class="fw-bold">{{ current_user.weight or '—' }}</div>
+                <div class="text-muted small">kg</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="profile-mini-stat">
+                <div class="fw-bold">{{ current_user.height or '—' }}</div>
+                <div class="text-muted small">cm</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="profile-mini-stat">
+                <div class="fw-bold">{{ current_user.bmi }}</div>
+                <div class="text-muted small">BMI</div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          <div class="d-flex flex-column gap-2">
+            {% if current_user.fitness_goal %}
+            <span class="badge bg-primary-light text-primary px-3 py-2">
+              🎯 {{ current_user.fitness_goal.replace('_',' ').title() }}
+            </span>
+            {% endif %}
+            {% if current_user.fitness_level %}
+            <span class="badge bg-success-light text-success px-3 py-2">
+              💪 {{ current_user.fitness_level.title() }} Level
+            </span>
+            {% endif %}
+            {% if current_user.dietary_preference %}
+            <span class="badge bg-warning-light text-warning px-3 py-2">
+              🥗 {{ current_user.dietary_preference.replace('_',' ').title() }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+        {% if current_user.tdee %}
+        <div class="border-top p-3">
+          <div class="row g-2 text-center">
+            <div class="col-6">
+              <div class="text-muted small">BMR</div>
+              <div class="fw-bold">{{ current_user.bmr }} kcal</div>
+            </div>
+            <div class="col-6">
+              <div class="text-muted small">TDEE</div>
+              <div class="fw-bold">{{ current_user.tdee }} kcal</div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Edit Form -->
+    <div class="col-lg-8">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-pen me-2 text-primary"></i>Edit Profile</h6>
+        </div>
+        <div class="p-4">
+          <form method="POST" action="{{ url_for('main.profile') }}">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Full Name</label>
+                <input type="text" name="full_name" class="form-control" value="{{ current_user.full_name or '' }}" placeholder="Your full name" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Username</label>
+                <input type="text" class="form-control" value="{{ current_user.username }}" disabled />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Age</label>
+                <input type="number" name="age" class="form-control" value="{{ current_user.age or '' }}" min="10" max="100" placeholder="Years" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Gender</label>
+                <select name="gender" class="form-select">
+                  <option value="">Select</option>
+                  <option value="male" {{ 'selected' if current_user.gender == 'male' }}>Male</option>
+                  <option value="female" {{ 'selected' if current_user.gender == 'female' }}>Female</option>
+                  <option value="other" {{ 'selected' if current_user.gender == 'other' }}>Other</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Fitness Level</label>
+                <select name="fitness_level" class="form-select">
+                  <option value="beginner" {{ 'selected' if current_user.fitness_level == 'beginner' }}>Beginner</option>
+                  <option value="intermediate" {{ 'selected' if current_user.fitness_level == 'intermediate' }}>Intermediate</option>
+                  <option value="advanced" {{ 'selected' if current_user.fitness_level == 'advanced' }}>Advanced</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Weight (kg)</label>
+                <input type="number" name="weight" class="form-control" value="{{ current_user.weight or '' }}" step="0.1" min="20" max="300" placeholder="e.g. 72.5" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Height (cm)</label>
+                <input type="number" name="height" class="form-control" value="{{ current_user.height or '' }}" step="0.1" min="100" max="250" placeholder="e.g. 170" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Fitness Goal</label>
+                <select name="fitness_goal" class="form-select">
+                  <option value="">Select goal</option>
+                  {% for goal in [('weight_loss','🏃 Weight Loss'), ('muscle_gain','💪 Muscle Gain'), ('strength','🏋️ Strength Training'), ('endurance','🚴 Endurance'), ('flexibility','🧘 Flexibility'), ('general','⚡ General Fitness')] %}
+                  <option value="{{ goal[0] }}" {{ 'selected' if current_user.fitness_goal == goal[0] }}>{{ goal[1] }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Activity Level</label>
+                <select name="activity_level" class="form-select">
+                  <option value="sedentary" {{ 'selected' if current_user.activity_level == 'sedentary' }}>Sedentary</option>
+                  <option value="lightly_active" {{ 'selected' if current_user.activity_level == 'lightly_active' }}>Lightly Active</option>
+                  <option value="moderately_active" {{ 'selected' if current_user.activity_level == 'moderately_active' }}>Moderately Active</option>
+                  <option value="very_active" {{ 'selected' if current_user.activity_level == 'very_active' }}>Very Active</option>
+                  <option value="extra_active" {{ 'selected' if current_user.activity_level == 'extra_active' }}>Extra Active</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Dietary Preference</label>
+                <select name="dietary_preference" class="form-select">
+                  <option value="">Select preference</option>
+                  <option value="vegetarian" {{ 'selected' if current_user.dietary_preference == 'vegetarian' }}>🥗 Vegetarian</option>
+                  <option value="vegan" {{ 'selected' if current_user.dietary_preference == 'vegan' }}>🌱 Vegan</option>
+                  <option value="non_vegetarian" {{ 'selected' if current_user.dietary_preference == 'non_vegetarian' }}>🍗 Non-Vegetarian</option>
+                  <option value="high_protein" {{ 'selected' if current_user.dietary_preference == 'high_protein' }}>💪 High-Protein</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Available Equipment</label>
+                <select name="equipment" class="form-select">
+                  <option value="bodyweight only" {{ 'selected' if current_user.equipment == 'bodyweight only' }}>🏠 Bodyweight Only</option>
+                  <option value="resistance bands" {{ 'selected' if current_user.equipment == 'resistance bands' }}>🔴 Resistance Bands</option>
+                  <option value="dumbbells" {{ 'selected' if current_user.equipment == 'dumbbells' }}>🏋️ Dumbbells</option>
+                  <option value="full gym equipment" {{ 'selected' if current_user.equipment == 'full gym equipment' }}>🏟️ Full Gym</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Workout Time (min/session)</label>
+                <input type="number" name="workout_time" class="form-control" value="{{ current_user.workout_time or 45 }}" min="15" max="180" step="5" />
+              </div>
+              <div class="col-12 mt-2">
+                <button type="submit" class="btn btn-primary px-4">
+                  <i class="fas fa-save me-2"></i>Save Profile
+                </button>
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}Nutrition Planner — FitVerse{% endblock %}
+{% block header_title %}<i class="fas fa-apple-whole me-2"></i>Nutrition Planner{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 pb-4">
+  <div class="row g-4">
+
+    <!-- Today's Summary -->
+    <div class="col-12">
+      <div class="row g-3">
+        {% set cal_pct = [(today_calories / target_calories * 100)|int, 100]|min %}
+        <div class="col-6 col-md-3">
+          <div class="macro-card">
+            <div class="macro-label">🔥 Calories</div>
+            <div class="macro-value">{{ today_calories }}</div>
+            <div class="macro-target">/ {{ target_calories }} kcal</div>
+            <div class="progress mt-2" style="height:6px;">
+              <div class="progress-bar bg-danger" style="width:{{ cal_pct }}%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="macro-card">
+            <div class="macro-label">🥩 Protein</div>
+            <div class="macro-value">{{ today_protein }}<span class="macro-unit">g</span></div>
+            <div class="macro-target">Target: {{ ((current_user.weight or 70) * 1.8)|int }}g</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="macro-card">
+            <div class="macro-label">🍚 Carbs</div>
+            <div class="macro-value">{{ today_carbs }}<span class="macro-unit">g</span></div>
+            <div class="macro-target">Daily intake</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="macro-card">
+            <div class="macro-label">🥑 Fat</div>
+            <div class="macro-value">{{ today_fat }}<span class="macro-unit">g</span></div>
+            <div class="macro-target">Daily intake</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Meal Plan Generator -->
+    <div class="col-lg-5">
+      <div class="card-panel mb-4">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-robot me-2 text-primary"></i>AI Meal Plan Generator</h6>
+          {% if ai_enabled %}<span class="badge bg-success">AI Ready</span>{% else %}<span class="badge bg-warning">AI Offline</span>{% endif %}
+        </div>
+        <div class="p-3">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Diet Type</label>
+            <select class="form-select" id="dietType">
+              {% for d in diet_types %}
+              <option value="{{ d.lower() }}" {{ 'selected' if current_user.dietary_preference and d.lower() in current_user.dietary_preference else '' }}>{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Fitness Goal</label>
+            <select class="form-select" id="nutritionGoal">
+              <option value="weight loss">Weight Loss</option>
+              <option value="muscle gain">Muscle Gain</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="high protein">High Protein</option>
+              <option value="endurance">Endurance</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Daily Calories Target</label>
+            <input type="number" class="form-control" id="calTarget" value="{{ target_calories }}" min="1000" max="5000" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Plan Duration</label>
+            <select class="form-select" id="planDays">
+              <option value="3">3 Days</option>
+              <option value="7" selected>7 Days</option>
+            </select>
+          </div>
+          <button class="btn btn-primary w-100" onclick="generateMealPlan()" id="mealPlanBtn">
+            <i class="fas fa-sparkles me-2"></i>Generate AI Meal Plan
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Meal Log -->
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-plus me-2 text-success"></i>Log a Meal</h6>
+        </div>
+        <div class="p-3">
+          <div class="row g-2">
+            <div class="col-6">
+              <select class="form-select form-select-sm" id="mealType">
+                {% for mt in meal_types %}<option>{{ mt }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <input type="text" class="form-control form-control-sm" id="foodItem" placeholder="Food item" />
+            </div>
+            <div class="col-3">
+              <input type="number" class="form-control form-control-sm" id="mealCal" placeholder="kcal" min="0" />
+            </div>
+            <div class="col-3">
+              <input type="number" class="form-control form-control-sm" id="mealProtein" placeholder="Protein g" min="0" step="0.1" />
+            </div>
+            <div class="col-3">
+              <input type="number" class="form-control form-control-sm" id="mealCarbs" placeholder="Carbs g" min="0" step="0.1" />
+            </div>
+            <div class="col-3">
+              <input type="number" class="form-control form-control-sm" id="mealFat" placeholder="Fat g" min="0" step="0.1" />
+            </div>
+            <div class="col-12">
+              <button class="btn btn-success btn-sm w-100" onclick="logMeal()">
+                <i class="fas fa-check me-1"></i>Log Meal
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Meal Plan Output + Indian Suggestions -->
+    <div class="col-lg-7">
+      <!-- AI Plan Result -->
+      <div class="card-panel mb-4" id="mealPlanCard" style="display:none;">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-sparkles me-2 text-warning"></i>Your AI Meal Plan</h6>
+          <button class="btn btn-sm btn-outline-secondary" onclick="copyMealPlan()"><i class="fas fa-copy me-1"></i>Copy</button>
+        </div>
+        <div class="p-3">
+          <div id="mealPlanLoading" class="text-center py-4" style="display:none;">
+            <div class="spinner-border text-primary mb-3"></div>
+            <p class="text-muted">Crafting your personalised meal plan…</p>
+          </div>
+          <div id="mealPlanContent"></div>
+        </div>
+      </div>
+
+      <!-- Today's Meals Log -->
+      <div class="card-panel mb-4">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-utensils me-2 text-danger"></i>Today's Meals</h6>
+        </div>
+        {% if today_meals %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-header">
+              <tr><th>Meal</th><th>Food</th><th>Cal</th><th>P</th><th>C</th><th>F</th><th></th></tr>
+            </thead>
+            <tbody id="mealTableBody">
+              {% for m in today_meals %}
+              <tr id="meal-{{ m.id }}">
+                <td><span class="badge bg-info-light text-info">{{ m.meal_type }}</span></td>
+                <td class="fw-semibold" style="font-size:0.875rem;">{{ m.food_item }}</td>
+                <td>{{ m.calories }}</td>
+                <td class="text-muted small">{{ m.protein_g or 0 }}g</td>
+                <td class="text-muted small">{{ m.carbs_g or 0 }}g</td>
+                <td class="text-muted small">{{ m.fat_g or 0 }}g</td>
+                <td><button class="btn btn-xs btn-outline-danger" onclick="deleteMeal({{ m.id }})"><i class="fas fa-trash-can"></i></button></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state py-4">
+          <i class="fas fa-utensils fa-2x text-muted mb-2"></i>
+          <p class="text-muted mb-0">No meals logged today. Start tracking!</p>
+        </div>
+        <tbody id="mealTableBody"></tbody>
+        {% endif %}
+      </div>
+
+      <!-- Healthy Indian Meals -->
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-leaf me-2 text-success"></i>Healthy Indian Meal Ideas</h6>
+        </div>
+        <div class="p-3">
+          <div class="row g-2">
+            {% for meal_time, items in indian_meals.items() %}
+            <div class="col-6 col-md-3">
+              <h6 class="text-muted small text-uppercase fw-semibold mb-2">{{ meal_time }}</h6>
+              {% for item in items %}
+              <button class="btn btn-xs btn-outline-success mb-1 w-100 text-start" onclick="quickFillMeal('{{ meal_time|title }}', '{{ item }}')">
+                {{ item }}
+              </button>
+              {% endfor %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <!-- 7-day Nutrition Chart -->
+        <div class="p-3 border-top">
+          <h6 class="mb-3 text-muted small text-uppercase fw-semibold">7-Day Calorie Trend</h6>
+          <div style="height: 180px;"><canvas id="nutritionChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+async function generateMealPlan() {
+  const card = document.getElementById('mealPlanCard');
+  const loading = document.getElementById('mealPlanLoading');
+  const content = document.getElementById('mealPlanContent');
+  const btn = document.getElementById('mealPlanBtn');
+
+  card.style.display = '';
+  loading.style.display = '';
+  content.innerHTML = '';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/generate-meal-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        diet_type: document.getElementById('dietType').value,
+        goal: document.getElementById('nutritionGoal').value,
+        calories: document.getElementById('calTarget').value,
+        days: document.getElementById('planDays').value,
+      }),
+    });
+    const data = await res.json();
+    loading.style.display = 'none';
+    content.innerHTML = data.plan
+      ? `<pre style="white-space:pre-wrap;font-family:inherit;font-size:0.9rem;">${escapeHtml(data.plan)}</pre>`
+      : `<div class="alert alert-warning">${data.error || 'Failed to generate.'}</div>`;
+  } catch {
+    loading.style.display = 'none';
+    content.innerHTML = `<div class="alert alert-danger">Network error. Please try again.</div>`;
+  } finally {
+    btn.disabled = false;
+    card.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+async function logMeal() {
+  const type = document.getElementById('mealType').value;
+  const food = document.getElementById('foodItem').value.trim();
+  if (!food) { alert('Please enter a food item.'); return; }
+
+  const res = await fetch('/api/meal-log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      meal_type: type,
+      food_item: food,
+      calories: parseInt(document.getElementById('mealCal').value) || 0,
+      protein_g: parseFloat(document.getElementById('mealProtein').value) || 0,
+      carbs_g: parseFloat(document.getElementById('mealCarbs').value) || 0,
+      fat_g: parseFloat(document.getElementById('mealFat').value) || 0,
+    }),
+  });
+  const data = await res.json();
+  if (data.status === 'logged') {
+    showToast('Meal logged! 🥗', 'success');
+    ['foodItem','mealCal','mealProtein','mealCarbs','mealFat'].forEach(id => document.getElementById(id).value = '');
+    addMealRow(data.meal);
+  }
+}
+
+function addMealRow(m) {
+  let tbody = document.getElementById('mealTableBody');
+  if (!tbody) return;
+  const row = document.createElement('tr');
+  row.id = 'meal-' + m.id;
+  row.innerHTML = `
+    <td><span class="badge bg-info-light text-info">${m.meal_type}</span></td>
+    <td class="fw-semibold" style="font-size:0.875rem;">${m.food_item}</td>
+    <td>${m.calories}</td>
+    <td class="text-muted small">${m.protein_g||0}g</td>
+    <td class="text-muted small">${m.carbs_g||0}g</td>
+    <td class="text-muted small">${m.fat_g||0}g</td>
+    <td><button class="btn btn-xs btn-outline-danger" onclick="deleteMeal(${m.id})"><i class="fas fa-trash-can"></i></button></td>`;
+  tbody.appendChild(row);
+}
+
+async function deleteMeal(id) {
+  if (!confirm('Remove this meal?')) return;
+  await fetch(`/api/meal-log/${id}`, { method: 'DELETE' });
+  document.getElementById('meal-' + id)?.remove();
+  showToast('Meal removed.', 'info');
+}
+
+function quickFillMeal(type, food) {
+  document.getElementById('mealType').value = type;
+  document.getElementById('foodItem').value = food;
+  document.getElementById('foodItem').focus();
+}
+
+function copyMealPlan() {
+  const t = document.getElementById('mealPlanContent')?.innerText || '';
+  navigator.clipboard.writeText(t).then(() => showToast('Meal plan copied!', 'success'));
+}
+
+async function loadNutritionChart() {
+  const res = await fetch('/api/nutrition-stats');
+  const data = await res.json();
+  const ctx = document.getElementById('nutritionChart')?.getContext('2d');
+  if (!ctx) return;
+  if (window._nutritionChart) window._nutritionChart.destroy();
+  window._nutritionChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.labels,
+      datasets: [
+        { label: 'Calories', data: data.calories, backgroundColor: 'rgba(239,68,68,0.7)', borderRadius: 6 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 10 } } },
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+}
+loadNutritionChart();
+</script>
+{% endblock %}
+{% endblock %}

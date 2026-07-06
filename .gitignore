@@ -1,0 +1,53 @@
+﻿# ── Secrets (NEVER commit these) ──────────────────────────
+.env
+
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+
+# ── Virtual Environment ───────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ── Database ──────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+fitverse.db
+
+# ── Flask / Migrations ────────────────────────────────────
+instance/
+.webassets-cache
+migrations/
+
+# ── IDE / Editor ──────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Logs ──────────────────────────────────────────────────
+*.log
+logs/
+
+# ── OS ────────────────────────────────────────────────────
+desktop.ini

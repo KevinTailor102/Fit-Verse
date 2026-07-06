@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — FitVerse{% endblock %}
+{% block header_title %}<i class="fas fa-gauge-high me-2"></i>Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 pb-4">
+
+  <!-- Welcome Banner -->
+  <div class="welcome-banner mb-4">
+    <div>
+      <h4 class="mb-1">Good {% if now().hour < 12 %}Morning{% elif now().hour < 17 %}Afternoon{% else %}Evening{% endif %}, {{ current_user.full_name or current_user.username }}! 👋</h4>
+      <p class="mb-0 text-muted">{{ today.strftime('%A, %B %d, %Y') }} — Stay consistent, stay strong!</p>
+    </div>
+    <a href="{{ url_for('chat.chat') }}" class="btn btn-primary">
+      <i class="fas fa-robot me-2"></i>Chat with AI Coach
+    </a>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="stat-card stat-card-blue">
+        <div class="stat-icon"><i class="fas fa-fire"></i></div>
+        <div class="stat-info">
+          <div class="stat-value">{{ total_calories_today }}</div>
+          <div class="stat-label">Calories Today</div>
+          <div class="stat-sub">Target: {{ target_calories }} kcal</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card stat-card-green">
+        <div class="stat-icon"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+          <div class="stat-value">{{ total_workout_mins }}<span class="stat-unit">min</span></div>
+          <div class="stat-label">Workout Today</div>
+          <div class="stat-sub">This week: {{ weekly_workouts }} sessions</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card stat-card-cyan">
+        <div class="stat-icon"><i class="fas fa-droplet"></i></div>
+        <div class="stat-info">
+          <div class="stat-value">{{ (water_ml / 1000)|round(1) }}<span class="stat-unit">L</span></div>
+          <div class="stat-label">Water Intake</div>
+          <div class="stat-sub">Target: {{ (water_target / 1000)|round(1) }}L</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card stat-card-purple">
+        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+          <div class="stat-value">{{ habits_done }}<span class="stat-unit">/{{ habits_total }}</span></div>
+          <div class="stat-label">Habits Done</div>
+          <div class="stat-sub">{% if habits_total > 0 %}{{ (habits_done / habits_total * 100)|int }}% complete{% else %}No habits set{% endif %}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Weekly Activity Chart -->
+    <div class="col-lg-8">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-chart-bar me-2 text-primary"></i>Weekly Workout Activity</h6>
+          <a href="{{ url_for('fitness.workout') }}" class="btn btn-sm btn-outline-primary">Log Workout</a>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="weeklyChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- BMI & Profile Card -->
+    <div class="col-lg-4">
+      <div class="card-panel h-100">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-user-circle me-2 text-success"></i>Your Profile</h6>
+          <a href="{{ url_for('main.profile') }}" class="btn btn-sm btn-outline-success">Edit</a>
+        </div>
+        {% if current_user.bmi %}
+        <div class="bmi-display text-center py-3">
+          <div class="bmi-circle {% if current_user.bmi_category == 'Normal' %}bmi-circle-green{% elif current_user.bmi_category == 'Underweight' %}bmi-circle-blue{% else %}bmi-circle-orange{% endif %}">
+            {{ current_user.bmi }}
+          </div>
+          <div class="mt-2 fw-semibold">{{ current_user.bmi_category }}</div>
+          <small class="text-muted">Body Mass Index</small>
+        </div>
+        <div class="profile-stats">
+          <div class="profile-stat">
+            <span class="profile-stat-label"><i class="fas fa-weight-scale me-1"></i>Weight</span>
+            <span>{{ current_user.weight or '—' }} kg</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-label"><i class="fas fa-ruler-vertical me-1"></i>Height</span>
+            <span>{{ current_user.height or '—' }} cm</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-label"><i class="fas fa-fire me-1"></i>TDEE</span>
+            <span>{{ current_user.tdee or '—' }} kcal</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-label"><i class="fas fa-target me-1"></i>Goal</span>
+            <span>{{ (current_user.fitness_goal or 'Not set').replace('_',' ').title() }}</span>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+          <i class="fas fa-user-circle fa-3x text-muted mb-3"></i>
+          <p class="text-muted">Complete your profile to see personalized insights.</p>
+          <a href="{{ url_for('main.profile') }}" class="btn btn-primary btn-sm">Setup Profile</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Today's Workouts -->
+    <div class="col-lg-6">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-dumbbell me-2 text-warning"></i>Today's Workouts</h6>
+          <a href="{{ url_for('fitness.workout') }}" class="btn btn-sm btn-outline-warning">+ Add</a>
+        </div>
+        {% if today_workouts %}
+        <div class="activity-list">
+          {% for w in today_workouts %}
+          <div class="activity-item">
+            <div class="activity-icon bg-warning-light"><i class="fas fa-dumbbell text-warning"></i></div>
+            <div class="activity-details">
+              <div class="activity-name">{{ w.workout_type }}</div>
+              <div class="activity-meta">{{ w.duration_minutes }} min · {{ w.calories_burned }} kcal</div>
+            </div>
+            <span class="badge bg-success"><i class="fas fa-check"></i></span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <i class="fas fa-dumbbell fa-2x text-muted mb-2"></i>
+          <p class="text-muted mb-0">No workouts logged today.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Today's Meals -->
+    <div class="col-lg-6">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-apple-whole me-2 text-danger"></i>Today's Meals</h6>
+          <a href="{{ url_for('nutrition.nutrition') }}" class="btn btn-sm btn-outline-danger">+ Add</a>
+        </div>
+        {% if today_meals %}
+        <div class="activity-list">
+          {% for m in today_meals %}
+          <div class="activity-item">
+            <div class="activity-icon bg-danger-light"><i class="fas fa-utensils text-danger"></i></div>
+            <div class="activity-details">
+              <div class="activity-name">{{ m.food_item }}</div>
+              <div class="activity-meta">{{ m.meal_type }} · {{ m.calories }} kcal</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <i class="fas fa-apple-whole fa-2x text-muted mb-2"></i>
+          <p class="text-muted mb-0">No meals logged today.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-12">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-bolt me-2 text-info"></i>Quick Actions</h6>
+        </div>
+        <div class="quick-actions-grid">
+          <a href="{{ url_for('chat.chat') }}" class="quick-action-btn">
+            <i class="fas fa-robot"></i><span>Ask AI Coach</span>
+          </a>
+          <a href="{{ url_for('fitness.workout') }}" class="quick-action-btn">
+            <i class="fas fa-dumbbell"></i><span>Workout Plan</span>
+          </a>
+          <a href="{{ url_for('nutrition.nutrition') }}" class="quick-action-btn">
+            <i class="fas fa-apple-whole"></i><span>Meal Plan</span>
+          </a>
+          <a href="{{ url_for('main.calculator') }}" class="quick-action-btn">
+            <i class="fas fa-calculator"></i><span>BMI/BMR</span>
+          </a>
+          <a href="{{ url_for('tracker.tracker') }}" class="quick-action-btn">
+            <i class="fas fa-chart-line"></i><span>Tracker</span>
+          </a>
+          <a href="{{ url_for('main.profile') }}" class="quick-action-btn">
+            <i class="fas fa-user-cog"></i><span>Profile</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+const chartLabels = {{ chart_labels | tojson }};
+const chartData = {{ chart_data | tojson }};
+
+const ctx = document.getElementById('weeklyChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: chartLabels,
+    datasets: [{
+      label: 'Minutes',
+      data: chartData,
+      backgroundColor: 'rgba(59,130,212,0.7)',
+      borderColor: '#3b82d4',
+      borderWidth: 2,
+      borderRadius: 8,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+</script>
+{% endblock %}
+{% endblock %}

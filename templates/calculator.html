@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% block title %}BMI & BMR Calculator — FitVerse{% endblock %}
+{% block header_title %}<i class="fas fa-calculator me-2"></i>BMI & BMR Calculator{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 pb-4">
+  <div class="row g-4">
+
+    <!-- Calculator Input -->
+    <div class="col-lg-5">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-calculator me-2 text-primary"></i>Body Metrics Calculator</h6>
+        </div>
+        <div class="p-3">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Age</label>
+              <div class="input-group">
+                <input type="number" class="form-control" id="calcAge" value="{{ current_user.age or '' }}" placeholder="Years" min="10" max="100" />
+                <span class="input-group-text">yrs</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Gender</label>
+              <select class="form-select" id="calcGender">
+                <option value="male" {{ 'selected' if current_user.gender == 'male' }}>Male</option>
+                <option value="female" {{ 'selected' if current_user.gender == 'female' }}>Female</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Weight</label>
+              <div class="input-group">
+                <input type="number" class="form-control" id="calcWeight" value="{{ current_user.weight or '' }}" placeholder="kg" min="20" max="300" step="0.1" />
+                <span class="input-group-text">kg</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Height</label>
+              <div class="input-group">
+                <input type="number" class="form-control" id="calcHeight" value="{{ current_user.height or '' }}" placeholder="cm" min="100" max="250" step="0.1" />
+                <span class="input-group-text">cm</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Activity Level</label>
+              <select class="form-select" id="calcActivity">
+                <option value="sedentary">Sedentary (desk job, no exercise)</option>
+                <option value="lightly_active">Lightly Active (1-3 days/week)</option>
+                <option value="moderately_active" selected>Moderately Active (3-5 days/week)</option>
+                <option value="very_active">Very Active (6-7 days/week)</option>
+                <option value="extra_active">Extra Active (athlete/physical job)</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <button class="btn btn-primary w-100 btn-lg" onclick="calculate()">
+                <i class="fas fa-calculator me-2"></i>Calculate
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BMI Scale Reference -->
+      <div class="card-panel mt-4">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-info-circle me-2 text-info"></i>BMI Scale</h6>
+        </div>
+        <div class="p-3">
+          <div class="bmi-scale">
+            <div class="bmi-range bmi-under">
+              <span class="fw-semibold">Underweight</span><br/>
+              <small>&lt; 18.5</small>
+            </div>
+            <div class="bmi-range bmi-normal">
+              <span class="fw-semibold">Normal</span><br/>
+              <small>18.5 – 24.9</small>
+            </div>
+            <div class="bmi-range bmi-over">
+              <span class="fw-semibold">Overweight</span><br/>
+              <small>25 – 29.9</small>
+            </div>
+            <div class="bmi-range bmi-obese">
+              <span class="fw-semibold">Obese</span><br/>
+              <small>≥ 30</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Panel -->
+    <div class="col-lg-7">
+      <div id="calcResults" style="display:none;">
+        <!-- BMI Result -->
+        <div class="card-panel mb-4">
+          <div class="card-panel-header">
+            <h6><i class="fas fa-weight-scale me-2 text-success"></i>Your Results</h6>
+          </div>
+          <div class="p-3">
+            <div class="row g-3 mb-4">
+              <div class="col-sm-6">
+                <div class="result-card text-center">
+                  <div class="result-label">BMI</div>
+                  <div class="result-value" id="bmiValue">—</div>
+                  <div class="badge mt-1" id="bmiCategory" style="font-size:0.85rem;">—</div>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="result-card text-center">
+                  <div class="result-label">BMR (Basal Metabolic Rate)</div>
+                  <div class="result-value" id="bmrValue">—</div>
+                  <div class="text-muted small">kcal/day at complete rest</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TDEE Cards -->
+            <h6 class="text-muted small text-uppercase fw-semibold mb-3">Daily Calorie Needs (TDEE)</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-sm-4">
+                <div class="calorie-card calorie-loss">
+                  <div class="calorie-label">🏃 Weight Loss</div>
+                  <div class="calorie-value" id="lossCalories">—</div>
+                  <div class="calorie-sub">500 kcal deficit</div>
+                </div>
+              </div>
+              <div class="col-sm-4">
+                <div class="calorie-card calorie-maintain">
+                  <div class="calorie-label">⚖️ Maintenance</div>
+                  <div class="calorie-value" id="maintainCalories">—</div>
+                  <div class="calorie-sub">TDEE</div>
+                </div>
+              </div>
+              <div class="col-sm-4">
+                <div class="calorie-card calorie-gain">
+                  <div class="calorie-label">💪 Muscle Gain</div>
+                  <div class="calorie-value" id="gainCalories">—</div>
+                  <div class="calorie-sub">500 kcal surplus</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Additional Metrics -->
+            <div class="row g-3">
+              <div class="col-6 col-sm-3">
+                <div class="metric-card">
+                  <i class="fas fa-ruler-horizontal text-info mb-2"></i>
+                  <div class="metric-value" id="idealWeight">—</div>
+                  <div class="metric-label">Ideal Weight (kg)</div>
+                </div>
+              </div>
+              <div class="col-6 col-sm-3">
+                <div class="metric-card">
+                  <i class="fas fa-droplet text-primary mb-2"></i>
+                  <div class="metric-value" id="waterIntake">—</div>
+                  <div class="metric-label">Water Intake (ml)</div>
+                </div>
+              </div>
+              <div class="col-6 col-sm-3">
+                <div class="metric-card">
+                  <i class="fas fa-egg text-warning mb-2"></i>
+                  <div class="metric-value" id="proteinTarget">—</div>
+                  <div class="metric-label">Protein Target (g)</div>
+                </div>
+              </div>
+              <div class="col-6 col-sm-3">
+                <div class="metric-card">
+                  <i class="fas fa-fire text-danger mb-2"></i>
+                  <div class="metric-value" id="tdeeValue">—</div>
+                  <div class="metric-label">TDEE (kcal)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Doughnut Chart -->
+        <div class="card-panel">
+          <div class="card-panel-header">
+            <h6><i class="fas fa-chart-pie me-2 text-warning"></i>Macro Distribution</h6>
+          </div>
+          <div class="p-3 d-flex flex-column flex-md-row align-items-center gap-4">
+            <div style="width:200px; height:200px; flex-shrink:0;">
+              <canvas id="macroChart"></canvas>
+            </div>
+            <div id="macroLegend" class="macro-legend"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state before calculation -->
+      <div id="calcEmpty" class="card-panel">
+        <div class="empty-state py-5">
+          <i class="fas fa-calculator fa-3x text-muted mb-3"></i>
+          <h5 class="text-muted">Enter your details and click Calculate</h5>
+          <p class="text-muted">Get your BMI, BMR, TDEE, calorie targets, and personalised health insights.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+let macroChartInstance = null;
+
+async function calculate() {
+  const weight = parseFloat(document.getElementById('calcWeight').value);
+  const height = parseFloat(document.getElementById('calcHeight').value);
+  const age = parseInt(document.getElementById('calcAge').value);
+  const gender = document.getElementById('calcGender').value;
+  const activity = document.getElementById('calcActivity').value;
+
+  if (!weight || !height || !age) {
+    showToast('Please fill in all fields.', 'warning');
+    return;
+  }
+
+  const res = await fetch('/api/calculate-bmi-bmr', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ weight, height, age, gender, activity_level: activity }),
+  });
+  const d = await res.json();
+  if (d.error) { showToast(d.error, 'danger'); return; }
+
+  document.getElementById('calcEmpty').style.display = 'none';
+  document.getElementById('calcResults').style.display = '';
+
+  document.getElementById('bmiValue').textContent = d.bmi;
+  document.getElementById('bmrValue').textContent = d.bmr.toLocaleString() + ' kcal';
+  document.getElementById('tdeeValue').textContent = d.tdee.toLocaleString();
+  document.getElementById('lossCalories').textContent = d.weight_loss_calories.toLocaleString();
+  document.getElementById('maintainCalories').textContent = d.maintenance_calories.toLocaleString();
+  document.getElementById('gainCalories').textContent = d.weight_gain_calories.toLocaleString();
+  document.getElementById('idealWeight').textContent = d.ideal_weight_low + '–' + d.ideal_weight_high;
+  document.getElementById('waterIntake').textContent = d.water_intake_ml.toLocaleString();
+  document.getElementById('proteinTarget').textContent = d.protein_target_g + 'g';
+
+  const catEl = document.getElementById('bmiCategory');
+  catEl.textContent = d.bmi_category;
+  catEl.className = 'badge mt-1';
+  const colorMap = { 'Underweight': 'bg-primary', 'Normal Weight': 'bg-success', 'Overweight': 'bg-warning text-dark', 'Obese': 'bg-danger' };
+  catEl.classList.add(colorMap[d.bmi_category] || 'bg-secondary');
+
+  // Macro distribution chart (~50% carbs, 25% protein, 25% fat of maintenance calories)
+  const totalCal = d.maintenance_calories;
+  const proteinCal = d.protein_target_g * 4;
+  const fatCal = Math.round(totalCal * 0.25);
+  const carbCal = totalCal - proteinCal - fatCal;
+
+  const ctx = document.getElementById('macroChart').getContext('2d');
+  if (macroChartInstance) macroChartInstance.destroy();
+  macroChartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Protein', 'Carbs', 'Fat'],
+      datasets: [{ data: [proteinCal, carbCal, fatCal], backgroundColor: ['#3b82d4','#f59e0b','#22c55e'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%' }
+  });
+
+  document.getElementById('macroLegend').innerHTML = `
+    <div class="macro-legend-item"><span class="legend-dot" style="background:#3b82d4;"></span> Protein: ${Math.round(proteinCal/4)}g (${Math.round(proteinCal/totalCal*100)}%)</div>
+    <div class="macro-legend-item"><span class="legend-dot" style="background:#f59e0b;"></span> Carbs: ${Math.round(carbCal/4)}g (${Math.round(carbCal/totalCal*100)}%)</div>
+    <div class="macro-legend-item"><span class="legend-dot" style="background:#22c55e;"></span> Fat: ${Math.round(fatCal/9)}g (${Math.round(fatCal/totalCal*100)}%)</div>
+  `;
+}
+
+// Auto-calculate if user has profile data
+window.addEventListener('load', () => {
+  const w = document.getElementById('calcWeight').value;
+  const h = document.getElementById('calcHeight').value;
+  const a = document.getElementById('calcAge').value;
+  if (w && h && a) calculate();
+});
+</script>
+{% endblock %}
+{% endblock %}

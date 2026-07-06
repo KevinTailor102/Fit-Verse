@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}Habit Tracker — FitVerse{% endblock %}
+{% block header_title %}<i class="fas fa-chart-line me-2"></i>Habit Tracker{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 pb-4">
+  <div class="row g-4">
+
+    <!-- Streak Banner -->
+    <div class="col-12">
+      <div class="streak-banner">
+        <div class="streak-info">
+          <div class="streak-number">🔥 {{ streak }}</div>
+          <div>
+            <div class="fw-bold">Day Streak!</div>
+            <div class="text-muted small">Keep the momentum going!</div>
+          </div>
+        </div>
+        <div class="streak-quote">
+          "Consistency is the key to lasting change."
+        </div>
+      </div>
+    </div>
+
+    <!-- Habit Tracker -->
+    <div class="col-lg-4">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-list-check me-2 text-primary"></i>Today's Habits</h6>
+        </div>
+        <div class="p-3">
+          <!-- Add Habit -->
+          <div class="input-group mb-3">
+            <select class="form-select" id="habitSelect">
+              <option value="">— Quick pick —</option>
+              {% for h in default_habits %}
+              <option value="{{ h }}">{{ h }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-outline-primary" onclick="addFromSelect()">Add</button>
+          </div>
+          <div class="input-group mb-4">
+            <input type="text" class="form-control" id="customHabit" placeholder="Or type a custom habit..." maxlength="100" />
+            <button class="btn btn-primary" onclick="addCustomHabit()"><i class="fas fa-plus"></i></button>
+          </div>
+
+          <!-- Habits List -->
+          <div id="habitsList">
+            {% if today_habits %}
+              {% for h in today_habits %}
+              <div class="habit-item" id="habit-{{ h.id }}">
+                <label class="habit-check">
+                  <input type="checkbox" {{ 'checked' if h.completed }} onchange="toggleHabit({{ h.id }}, this)" />
+                  <span class="habit-name {{ 'completed' if h.completed }}">{{ h.habit_name }}</span>
+                </label>
+                <button class="btn-habit-del" onclick="deleteHabit({{ h.id }})"><i class="fas fa-times"></i></button>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div id="emptyHabits" class="text-center py-3 text-muted">
+                <i class="fas fa-clipboard-list fa-2x mb-2"></i>
+                <p class="mb-0">No habits for today. Add some above!</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Water + Sleep Trackers -->
+    <div class="col-lg-4">
+      <!-- Water Intake -->
+      <div class="card-panel mb-4">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-droplet me-2 text-primary"></i>Water Intake</h6>
+          <button class="btn btn-sm btn-outline-secondary" onclick="resetWater()">Reset</button>
+        </div>
+        <div class="p-3 text-center">
+          <div class="water-display">
+            <div class="water-amount" id="waterDisplay">{{ (water_ml / 1000)|round(2) }}L</div>
+            <div class="water-target">of {{ (water_target_ml / 1000)|round(1) }}L daily target</div>
+          </div>
+          <div class="water-progress-bar mb-3">
+            <div class="water-progress-fill" id="waterProgressFill" style="width: {{ [water_ml / water_target_ml * 100, 100]|min|round }}%"></div>
+          </div>
+          <div class="d-flex gap-2 justify-content-center flex-wrap">
+            {% for amt in [150, 250, 350, 500] %}
+            <button class="btn btn-outline-primary btn-sm" onclick="logWater({{ amt }})">
+              <i class="fas fa-droplet me-1"></i>+{{ amt }}ml
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Sleep Tracker -->
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-moon me-2 text-secondary"></i>Sleep Tracker</h6>
+        </div>
+        <div class="p-3">
+          {% if last_sleep %}
+          <div class="sleep-summary mb-3">
+            <div class="sleep-hours">{{ last_sleep.hours }}h</div>
+            <div>
+              <div class="fw-semibold">Last Night's Sleep</div>
+              <span class="badge bg-{{ 'success' if last_sleep.quality == 'excellent' else 'primary' if last_sleep.quality == 'good' else 'warning text-dark' if last_sleep.quality == 'fair' else 'danger' }}">
+                {{ last_sleep.quality|title }}
+              </span>
+            </div>
+          </div>
+          {% endif %}
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Hours Slept</label>
+              <input type="number" class="form-control form-control-sm" id="sleepHours" value="7.5" min="1" max="14" step="0.5" />
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Quality</label>
+              <select class="form-select form-select-sm" id="sleepQuality">
+                <option value="poor">Poor 😴</option>
+                <option value="fair">Fair 😐</option>
+                <option value="good" selected>Good 😊</option>
+                <option value="excellent">Excellent 🌟</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <button class="btn btn-secondary btn-sm w-100" onclick="logSleep()">
+                <i class="fas fa-moon me-1"></i>Log Sleep
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weekly Progress Charts -->
+    <div class="col-lg-4">
+      <div class="card-panel h-100">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-chart-area me-2 text-success"></i>7-Day Overview</h6>
+        </div>
+        <div class="p-3">
+          <div class="mb-4">
+            <h6 class="small text-muted text-uppercase fw-semibold mb-2">Habit Completion %</h6>
+            <div style="height:130px;"><canvas id="habitChart"></canvas></div>
+          </div>
+          <div class="mb-4">
+            <h6 class="small text-muted text-uppercase fw-semibold mb-2">Water Intake (ml)</h6>
+            <div style="height:130px;"><canvas id="waterChart"></canvas></div>
+          </div>
+          <div>
+            <h6 class="small text-muted text-uppercase fw-semibold mb-2">Sleep Hours</h6>
+            <div style="height:130px;"><canvas id="sleepChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+const waterTarget = {{ water_target_ml }};
+
+// ── Habits ─────────────────────────────────────────────────────
+function addFromSelect() {
+  const sel = document.getElementById('habitSelect');
+  if (sel.value) addHabit(sel.value);
+  sel.value = '';
+}
+function addCustomHabit() {
+  const input = document.getElementById('customHabit');
+  if (input.value.trim()) { addHabit(input.value.trim()); input.value = ''; }
+}
+
+async function addHabit(name) {
+  const res = await fetch('/api/habit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ habit_name: name }),
+  });
+  const data = await res.json();
+  if (data.status === 'added') {
+    const el = document.getElementById('emptyHabits');
+    if (el) el.remove();
+    document.getElementById('habitsList').insertAdjacentHTML('beforeend', renderHabitItem(data.habit));
+    showToast('Habit added! ✅', 'success');
+  } else {
+    showToast(data.error || 'Error adding habit.', 'warning');
+  }
+}
+
+function renderHabitItem(h) {
+  return `<div class="habit-item" id="habit-${h.id}">
+    <label class="habit-check">
+      <input type="checkbox" ${h.completed ? 'checked' : ''} onchange="toggleHabit(${h.id}, this)" />
+      <span class="habit-name${h.completed ? ' completed' : ''}">${h.habit_name}</span>
+    </label>
+    <button class="btn-habit-del" onclick="deleteHabit(${h.id})"><i class="fas fa-times"></i></button>
+  </div>`;
+}
+
+async function toggleHabit(id, el) {
+  const res = await fetch(`/api/habit/${id}/toggle`, { method: 'POST' });
+  const data = await res.json();
+  const nameEl = el.closest('.habit-item').querySelector('.habit-name');
+  if (data.completed) { nameEl.classList.add('completed'); }
+  else { nameEl.classList.remove('completed'); }
+}
+
+async function deleteHabit(id) {
+  await fetch(`/api/habit/${id}`, { method: 'DELETE' });
+  document.getElementById('habit-' + id)?.remove();
+  showToast('Habit removed.', 'info');
+}
+
+// ── Water ──────────────────────────────────────────────────────
+async function logWater(amount) {
+  const res = await fetch('/api/water', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount_ml: amount }),
+  });
+  const data = await res.json();
+  updateWaterDisplay(data.amount_ml);
+  showToast(`+${amount}ml logged! 💧`, 'info');
+}
+
+async function resetWater() {
+  await fetch('/api/water/reset', { method: 'POST' });
+  updateWaterDisplay(0);
+  showToast('Water tracker reset.', 'info');
+}
+
+function updateWaterDisplay(ml) {
+  document.getElementById('waterDisplay').textContent = (ml / 1000).toFixed(2) + 'L';
+  const pct = Math.min(ml / waterTarget * 100, 100);
+  document.getElementById('waterProgressFill').style.width = pct + '%';
+}
+
+// ── Sleep ──────────────────────────────────────────────────────
+async function logSleep() {
+  const hours = parseFloat(document.getElementById('sleepHours').value);
+  const quality = document.getElementById('sleepQuality').value;
+  const res = await fetch('/api/sleep', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hours, quality }),
+  });
+  const data = await res.json();
+  if (data.status === 'logged') showToast(`Sleep logged: ${hours}h — ${quality} 😴`, 'success');
+}
+
+// ── Charts ─────────────────────────────────────────────────────
+async function loadTrackerCharts() {
+  const res = await fetch('/api/tracker-stats');
+  const data = await res.json();
+  const chartOpts = (color) => ({
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 9 } } },
+      x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+    }
+  });
+
+  new Chart(document.getElementById('habitChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: data.labels, datasets: [{ data: data.habits, backgroundColor: 'rgba(59,130,212,0.7)', borderRadius: 5 }] },
+    options: chartOpts('#3b82d4'),
+  });
+  new Chart(document.getElementById('waterChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: data.labels, datasets: [{ data: data.water, backgroundColor: 'rgba(34,197,94,0.7)', borderRadius: 5 }] },
+    options: chartOpts('#22c55e'),
+  });
+  new Chart(document.getElementById('sleepChart').getContext('2d'), {
+    type: 'line',
+    data: { labels: data.labels, datasets: [{ data: data.sleep, borderColor: '#7c5cd8', backgroundColor: 'rgba(124,92,216,0.1)', fill: true, tension: 0.4 }] },
+    options: chartOpts('#7c5cd8'),
+  });
+}
+loadTrackerCharts();
+</script>
+{% endblock %}
+{% endblock %}

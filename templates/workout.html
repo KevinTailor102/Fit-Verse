@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% block title %}Workout Planner — FitVerse{% endblock %}
+{% block header_title %}<i class="fas fa-dumbbell me-2"></i>Workout Planner{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 pb-4">
+  <div class="row g-4">
+
+    <!-- AI Workout Generator -->
+    <div class="col-lg-5">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-robot me-2 text-primary"></i>AI Workout Generator</h6>
+          {% if ai_enabled %}
+          <span class="badge bg-success">AI Ready</span>
+          {% else %}
+          <span class="badge bg-warning">AI Offline</span>
+          {% endif %}
+        </div>
+        <div class="p-3">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Fitness Goal</label>
+            <select class="form-select" id="workoutGoal">
+              {% for wt in workout_types %}
+              <option value="{{ wt.lower().replace(' ','_') }}" {{ 'selected' if current_user.fitness_goal and wt.lower().replace(' ','_') in current_user.fitness_goal else '' }}>{{ wt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Fitness Level</label>
+            <div class="btn-group w-100" role="group">
+              {% for level in fitness_levels %}
+              <input type="radio" class="btn-check" name="fitnessLevel" id="level{{ level }}" value="{{ level.lower() }}" {{ 'checked' if (current_user.fitness_level or 'beginner') == level.lower() else '' }} />
+              <label class="btn btn-outline-primary" for="level{{ level }}">{{ level }}</label>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Days/Week</label>
+              <select class="form-select" id="workoutDays">
+                <option value="3">3 days</option>
+                <option value="4">4 days</option>
+                <option value="5" selected>5 days</option>
+                <option value="6">6 days</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Session Duration</label>
+              <select class="form-select" id="workoutDuration">
+                <option value="20">20 min</option>
+                <option value="30">30 min</option>
+                <option value="45" selected>45 min</option>
+                <option value="60">60 min</option>
+                <option value="90">90 min</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Available Equipment</label>
+            <select class="form-select" id="equipment">
+              <option value="bodyweight only">🏠 Bodyweight Only</option>
+              <option value="resistance bands">🔴 Resistance Bands</option>
+              <option value="dumbbells">🏋️ Dumbbells</option>
+              <option value="full gym equipment">🏟️ Full Gym</option>
+              <option value="yoga mat">🧘 Yoga Mat</option>
+            </select>
+          </div>
+          <button class="btn btn-primary w-100" onclick="generateWorkout()" id="generateBtn">
+            <i class="fas fa-sparkles me-2"></i>Generate AI Workout Plan
+          </button>
+        </div>
+      </div>
+
+      <!-- Log Workout -->
+      <div class="card-panel mt-4">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-plus-circle me-2 text-success"></i>Log Today's Workout</h6>
+        </div>
+        <div class="p-3">
+          <div class="row g-2">
+            <div class="col-12">
+              <select class="form-select form-select-sm" id="logType">
+                {% for wt in workout_types %}<option>{{ wt }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <input type="number" class="form-control form-control-sm" id="logDuration" placeholder="Duration (min)" min="1" max="300" />
+            </div>
+            <div class="col-6">
+              <input type="number" class="form-control form-control-sm" id="logCalories" placeholder="Calories burned" min="0" />
+            </div>
+            <div class="col-12">
+              <input type="text" class="form-control form-control-sm" id="logNotes" placeholder="Notes (optional)" />
+            </div>
+            <div class="col-12">
+              <button class="btn btn-success btn-sm w-100" onclick="logWorkout()">
+                <i class="fas fa-check me-1"></i>Log Workout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Result + Recent Workouts -->
+    <div class="col-lg-7">
+      <!-- AI Generated Plan -->
+      <div class="card-panel mb-4" id="aiPlanCard" style="display:none;">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-sparkles me-2 text-warning"></i>Your AI Workout Plan</h6>
+          <button class="btn btn-sm btn-outline-secondary" onclick="copyPlan()">
+            <i class="fas fa-copy me-1"></i>Copy
+          </button>
+        </div>
+        <div class="p-3">
+          <div id="aiPlanLoading" class="text-center py-4" style="display:none;">
+            <div class="spinner-border text-primary mb-3"></div>
+            <p class="text-muted">FitBot is creating your personalized workout plan…</p>
+          </div>
+          <div id="aiPlanContent" class="ai-plan-content"></div>
+        </div>
+      </div>
+
+      <!-- Recent Workouts -->
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <h6><i class="fas fa-history me-2 text-info"></i>Recent Workouts</h6>
+        </div>
+        {% if recent_workouts %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-header">
+              <tr><th>Date</th><th>Type</th><th>Duration</th><th>Calories</th><th>Notes</th><th></th></tr>
+            </thead>
+            <tbody id="workoutTableBody">
+              {% for w in recent_workouts %}
+              <tr id="workout-{{ w.id }}">
+                <td class="text-muted small">{{ w.date.strftime('%b %d') }}</td>
+                <td><span class="badge bg-primary-light text-primary">{{ w.workout_type }}</span></td>
+                <td>{{ w.duration_minutes }} min</td>
+                <td>{{ w.calories_burned }} kcal</td>
+                <td class="text-muted small">{{ w.notes or '—' }}</td>
+                <td>
+                  <button class="btn btn-xs btn-outline-danger" onclick="deleteWorkout({{ w.id }})">
+                    <i class="fas fa-trash-can"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state py-5">
+          <i class="fas fa-dumbbell fa-2x text-muted mb-3"></i>
+          <p class="text-muted">No workouts logged yet. Start tracking your progress!</p>
+        </div>
+        {% endif %}
+
+        <!-- 30-day chart -->
+        <div class="p-3 border-top">
+          <h6 class="mb-3 text-muted small text-uppercase fw-semibold">30-Day Workout History</h6>
+          <div style="height: 180px;"><canvas id="workoutChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+async function generateWorkout() {
+  const btn = document.getElementById('generateBtn');
+  const card = document.getElementById('aiPlanCard');
+  const loading = document.getElementById('aiPlanLoading');
+  const content = document.getElementById('aiPlanContent');
+
+  card.style.display = '';
+  loading.style.display = '';
+  content.innerHTML = '';
+  btn.disabled = true;
+
+  const goal = document.getElementById('workoutGoal').value;
+  const level = document.querySelector('input[name="fitnessLevel"]:checked')?.value || 'beginner';
+  const days = document.getElementById('workoutDays').value;
+  const duration = document.getElementById('workoutDuration').value;
+  const equipment = document.getElementById('equipment').value;
+
+  try {
+    const res = await fetch('/api/generate-workout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goal, level, days, duration, equipment }),
+    });
+    const data = await res.json();
+    loading.style.display = 'none';
+    if (data.plan) {
+      content.innerHTML = `<pre style="white-space:pre-wrap;font-family:inherit;font-size:0.9rem;">${escapeHtml(data.plan)}</pre>`;
+    } else {
+      content.innerHTML = `<div class="alert alert-warning">${data.error || 'Failed to generate plan.'}</div>`;
+    }
+  } catch {
+    loading.style.display = 'none';
+    content.innerHTML = `<div class="alert alert-danger">Network error. Please try again.</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+  card.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function logWorkout() {
+  const type = document.getElementById('logType').value;
+  const duration = parseInt(document.getElementById('logDuration').value) || 0;
+  const calories = parseInt(document.getElementById('logCalories').value) || 0;
+  const notes = document.getElementById('logNotes').value;
+
+  if (!duration) { alert('Please enter workout duration.'); return; }
+
+  const res = await fetch('/api/workout-log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ workout_type: type, duration_minutes: duration, calories_burned: calories, notes }),
+  });
+  const data = await res.json();
+  if (data.status === 'logged') {
+    showToast('Workout logged successfully! 💪', 'success');
+    document.getElementById('logDuration').value = '';
+    document.getElementById('logCalories').value = '';
+    document.getElementById('logNotes').value = '';
+    addWorkoutRow(data.log);
+    loadWorkoutChart();
+  }
+}
+
+function addWorkoutRow(log) {
+  const tbody = document.getElementById('workoutTableBody');
+  if (!tbody) return;
+  const row = document.createElement('tr');
+  row.id = 'workout-' + log.id;
+  row.innerHTML = `
+    <td class="text-muted small">${log.date}</td>
+    <td><span class="badge bg-primary-light text-primary">${log.workout_type}</span></td>
+    <td>${log.duration_minutes} min</td>
+    <td>${log.calories_burned} kcal</td>
+    <td class="text-muted small">${log.notes || '—'}</td>
+    <td><button class="btn btn-xs btn-outline-danger" onclick="deleteWorkout(${log.id})"><i class="fas fa-trash-can"></i></button></td>`;
+  tbody.insertBefore(row, tbody.firstChild);
+}
+
+async function deleteWorkout(id) {
+  if (!confirm('Delete this workout log?')) return;
+  await fetch(`/api/workout-log/${id}`, { method: 'DELETE' });
+  document.getElementById('workout-' + id)?.remove();
+  showToast('Workout deleted.', 'info');
+}
+
+function copyPlan() {
+  const content = document.getElementById('aiPlanContent')?.innerText || '';
+  navigator.clipboard.writeText(content).then(() => showToast('Plan copied to clipboard!', 'success'));
+}
+
+async function loadWorkoutChart() {
+  const res = await fetch('/api/workout-stats');
+  const data = await res.json();
+  const ctx = document.getElementById('workoutChart')?.getContext('2d');
+  if (!ctx) return;
+  if (window._workoutChart) window._workoutChart.destroy();
+  window._workoutChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.labels,
+      datasets: [{
+        label: 'Minutes',
+        data: data.durations,
+        borderColor: '#3b82d4',
+        backgroundColor: 'rgba(59,130,212,0.1)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 10 } } },
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 7, font: { size: 10 } } }
+      }
+    }
+  });
+}
+loadWorkoutChart();
+</script>
+{% endblock %}
+{% endblock %}
