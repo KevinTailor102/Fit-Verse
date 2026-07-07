@@ -1,0 +1,92 @@
+{
+  "name": "FitVerse",
+  "description": "AI-Powered Fitness Coach web application built with IBM watsonx.ai Granite and Flask. Features personalized workout plans, nutrition advice, BMI/BMR calculator, habit tracker, and a ChatGPT-style AI fitness coach.",
+  "keywords": [
+    "fitness",
+    "ai",
+    "ibm-watsonx",
+    "granite",
+    "flask",
+    "python",
+    "health",
+    "workout",
+    "nutrition"
+  ],
+  "website": "https://github.com/YOUR_USERNAME/FitVerse",
+  "repository": "https://github.com/YOUR_USERNAME/FitVerse",
+  "logo": "https://raw.githubusercontent.com/YOUR_USERNAME/FitVerse/main/static/images/logo.png",
+  "success_url": "/",
+  "scripts": {
+    "postdeploy": "python -c \"from app import create_app; from models import db; app = create_app(); app.app_context().push(); db.create_all()\""
+  },
+  "env": {
+    "SECRET_KEY": {
+      "description": "A secret key used to sign Flask session cookies. Use a long random string.",
+      "generator": "secret",
+      "required": true
+    },
+    "WATSONX_API_KEY": {
+      "description": "Your IBM Cloud API Key. Get it from https://cloud.ibm.com/iam/apikeys",
+      "required": true
+    },
+    "WATSONX_PROJECT_ID": {
+      "description": "Your IBM watsonx.ai Project ID. Found in your watsonx.ai project settings.",
+      "required": true
+    },
+    "WATSONX_URL": {
+      "description": "IBM watsonx.ai endpoint URL. e.g. https://us-south.ml.cloud.ibm.com or https://au-syd.ml.cloud.ibm.com",
+      "value": "https://us-south.ml.cloud.ibm.com",
+      "required": true
+    },
+    "WATSONX_MODEL_ID": {
+      "description": "IBM Granite or Llama model ID to use for AI responses.",
+      "value": "meta-llama/llama-3-3-70b-instruct",
+      "required": false
+    },
+    "FLASK_ENV": {
+      "description": "Flask environment. Use 'production' for deployment.",
+      "value": "production",
+      "required": false
+    },
+    "DATABASE_URL": {
+      "description": "Database connection URL. Defaults to SQLite for local, use PostgreSQL for production.",
+      "value": "sqlite:///fitverse.db",
+      "required": false
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "stack": "heroku-24",
+  "addons": [],
+  "technologies": [
+    {
+      "name": "IBM watsonx.ai",
+      "description": "AI foundation model platform powering the FitBot coach using Granite and Llama models"
+    },
+    {
+      "name": "Flask",
+      "description": "Python micro web framework for the backend API and server-side rendering"
+    },
+    {
+      "name": "Bootstrap 5",
+      "description": "Frontend CSS framework for responsive, mobile-first UI"
+    },
+    {
+      "name": "Chart.js",
+      "description": "JavaScript library for progress charts and data visualisation"
+    },
+    {
+      "name": "SQLite / SQLAlchemy",
+      "description": "Database layer for user profiles, workouts, meals, habits, and chat history"
+    }
+  ]
+}
